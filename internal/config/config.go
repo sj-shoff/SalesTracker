@@ -32,14 +32,6 @@ type Config struct {
 		DelayMs  int     `env:"RETRIES_DELAY_MS" validate:"required"`
 		Backoff  float64 `env:"RETRIES_BACKOFF" validate:"required"`
 	}
-	Pprof struct {
-		Enabled         bool          `env:"PPROF_ENABLED" env-default:"false"`
-		Port            string        `env:"PPROF_PORT" env-default:"6060"`
-		ShutdownTimeout time.Duration `env:"PPROF_SHUTDOWN_TIMEOUT" env-default:"5s"`
-		ReadTimeout     time.Duration `env:"PPROF_READ_TIMEOUT" env-default:"5s"`
-		WriteTimeout    time.Duration `env:"PPROF_WRITE_TIMEOUT" env-default:"5s"`
-		IdleTimeout     time.Duration `env:"PPROF_IDLE_TIMEOUT" env-default:"30s"`
-	}
 }
 
 func MustLoad() (*Config, error) {

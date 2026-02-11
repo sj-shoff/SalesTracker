@@ -1,10 +1,9 @@
-package postgres
+package items_postgres
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"sales-tracker/internal/domain"
 
@@ -12,19 +11,19 @@ import (
 	"github.com/wb-go/wbf/retry"
 )
 
-type PostgresRepository struct {
+type ItemsPostgresRepository struct {
 	db      *dbpg.DB
 	retries retry.Strategy
 }
 
-func NewPostgresRepository(db *dbpg.DB, retries retry.Strategy) *PostgresRepository {
-	return &PostgresRepository{
+func NewPostgresRepository(db *dbpg.DB, retries retry.Strategy) *ItemsPostgresRepository {
+	return &ItemsPostgresRepository{
 		db:      db,
 		retries: retries,
 	}
 }
 
-func (r *PostgresRepository) CreateItem(ctx context.Context, item *domain.Item) (int64, error) {
+func (r *ItemsPostgresRepository) CreateItem(ctx context.Context, item *domain.Item) (int64, error) {
 	var id int64
 	query := `
 		INSERT INTO items (type, amount, date, category, description)
@@ -42,7 +41,7 @@ func (r *PostgresRepository) CreateItem(ctx context.Context, item *domain.Item) 
 	return id, nil
 }
 
-func (r *PostgresRepository) GetItems(ctx context.Context) ([]*domain.Item, error) {
+func (r *ItemsPostgresRepository) GetItems(ctx context.Context) ([]*domain.Item, error) {
 	var items []*domain.Item
 	query := `
 		SELECT id, type, amount, date, category, description, created_at, updated_at
@@ -77,7 +76,7 @@ func (r *PostgresRepository) GetItems(ctx context.Context) ([]*domain.Item, erro
 	return items, nil
 }
 
-func (r *PostgresRepository) GetItemByID(ctx context.Context, id int64) (*domain.Item, error) {
+func (r *ItemsPostgresRepository) GetItemByID(ctx context.Context, id int64) (*domain.Item, error) {
 	item := &domain.Item{}
 	query := `
 		SELECT id, type, amount, date, category, description, created_at, updated_at
@@ -107,7 +106,7 @@ func (r *PostgresRepository) GetItemByID(ctx context.Context, id int64) (*domain
 	return item, nil
 }
 
-func (r *PostgresRepository) UpdateItem(ctx context.Context, id int64, item *domain.Item) error {
+func (r *ItemsPostgresRepository) UpdateItem(ctx context.Context, id int64, item *domain.Item) error {
 	query := `
 		UPDATE items
 		SET type = $1, amount = $2, date = $3, category = $4, description = $5, updated_at = now()
@@ -127,7 +126,7 @@ func (r *PostgresRepository) UpdateItem(ctx context.Context, id int64, item *dom
 	return nil
 }
 
-func (r *PostgresRepository) DeleteItem(ctx context.Context, id int64) error {
+func (r *ItemsPostgresRepository) DeleteItem(ctx context.Context, id int64) error {
 	query := `
 		DELETE FROM items
 		WHERE id = $1
@@ -144,33 +143,4 @@ func (r *PostgresRepository) DeleteItem(ctx context.Context, id int64) error {
 		return sql.ErrNoRows
 	}
 	return nil
-}
-
-func (r *PostgresRepository) GetAnalytics(ctx context.Context, from, to time.Time) (*domain.Analytics, error) {
-	analytics := &domain.Analytics{}
-	query := `
-		SELECT 
-			COALESCE(SUM(amount), 0) AS sum,
-			COALESCE(AVG(amount), 0) AS avg,
-			COUNT(*) AS count,
-			COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0) AS median,
-			COALESCE(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY amount), 0) AS percent90
-		FROM items
-		WHERE date BETWEEN $1 AND $2
-	`
-	row, err := r.db.QueryRowWithRetry(ctx, r.retries, query, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get analytics: %w", err)
-	}
-	err = row.Scan(
-		&analytics.Sum,
-		&analytics.Avg,
-		&analytics.Count,
-		&analytics.Median,
-		&analytics.Percent90,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan analytics: %w", err)
-	}
-	return analytics, nil
 }
