@@ -1,3 +1,4 @@
+// internal/config/config.go
 package config
 
 import (
@@ -16,9 +17,9 @@ type Config struct {
 		User            string        `env:"POSTGRES_USER" validate:"required"`
 		Pass            string        `env:"POSTGRES_PASSWORD" validate:"required"`
 		DBName          string        `env:"POSTGRES_DB" validate:"required"`
-		MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS"`
-		MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS"`
-		ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME"`
+		MaxOpenConns    int           `env:"POSTGRES_MAX_OPEN_CONNS"`
+		MaxIdleConns    int           `env:"POSTGRES_MAX_IDLE_CONNS"`
+		ConnMaxLifetime time.Duration `env:"POSTGRES_CONN_MAX_LIFETIME"`
 	}
 	Server struct {
 		Addr            string        `env:"SERVER_PORT" validate:"required"`
@@ -41,7 +42,7 @@ func MustLoad() (*Config, error) {
 		return nil, fmt.Errorf("failed to read environment variables: %w", err)
 	}
 	validate := validator.New()
-	if err := validate.Struct(cfg); err != nil {
+	if err := validate.Struct(&cfg); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 	return &cfg, nil

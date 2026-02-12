@@ -4,9 +4,9 @@ import "time"
 
 type Item struct {
 	ID          int64
-	Type        string
-	Amount      float64
-	Date        time.Time
+	Type        string    `validate:"required,oneof=income expense"`
+	Amount      float64   `validate:"gte=0"`
+	Date        time.Time `validate:"required"`
 	Category    string
 	Description string
 	CreatedAt   time.Time

@@ -6,4 +6,5 @@ type Analytics struct {
 	Count     int64
 	Median    float64
 	Percent90 float64
+	Details   []*Item
 }

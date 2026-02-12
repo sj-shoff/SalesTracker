@@ -3,16 +3,16 @@ package dto
 import "time"
 
 type CreateItemRequest struct {
-	Type        string    `json:"type"`
-	Amount      float64   `json:"amount"`
-	Date        time.Time `json:"date"`
+	Type        string    `json:"type" validate:"required,oneof=income expense"`
+	Amount      float64   `json:"amount" validate:"gte=0"`
+	Date        time.Time `json:"date" validate:"required"`
 	Category    string    `json:"category"`
 	Description string    `json:"description"`
 }
 
 type UpdateItemRequest struct {
-	Type        string    `json:"type,omitempty"`
-	Amount      float64   `json:"amount,omitempty"`
+	Type        string    `json:"type,omitempty" validate:"omitempty,oneof=income expense"`
+	Amount      float64   `json:"amount,omitempty" validate:"omitempty,gte=0"`
 	Date        time.Time `json:"date,omitempty"`
 	Category    string    `json:"category,omitempty"`
 	Description string    `json:"description,omitempty"`
@@ -29,10 +29,9 @@ type ItemResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-type AnalyticsResponse struct {
-	Sum       float64 `json:"sum"`
-	Avg       float64 `json:"avg"`
-	Count     int64   `json:"count"`
-	Median    float64 `json:"median"`
-	Percent90 float64 `json:"percent90"`
+type ItemsResponse struct {
+	Items []*ItemResponse `json:"items"`
+	Total int64           `json:"total"`
+	Page  int             `json:"page"`
+	Limit int             `json:"limit"`
 }

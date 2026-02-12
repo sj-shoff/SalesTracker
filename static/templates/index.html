@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SalesTracker Pro | Умный учёт финансов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4361ee',
+                        secondary: '#3f37c9',
+                        success: '#4cc9f0',
+                        warning: '#f72585',
+                        dark: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .theme-transition { transition: background-color 0.3s, color 0.3s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .btn-primary { background: linear-gradient(120deg, #4361ee, #3a0ca3); }
+        .btn-success { background: linear-gradient(120deg, #4cc9f0, #4895ef); }
+        .btn-warning { background: linear-gradient(120deg, #f72585, #b5179e); }
+        .theme-toggle:checked + .toggle-label .toggle-circle { transform: translateX(100%); background-color: #1e293b; }
+        .theme-toggle:checked ~ .sun-icon { opacity: 0; }
+        .theme-toggle:checked ~ .moon-icon { opacity: 1; }
+        .theme-toggle:not(:checked) ~ .sun-icon { opacity: 1; }
+        .theme-toggle:not(:checked) ~ .moon-icon { opacity: 0; }
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+        @media (max-width: 768px) { .data-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 theme-transition">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-md py-4 px-6 flex justify-between items-center theme-transition">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-r from-primary to-secondary text-white p-2 rounded-xl">
+                    <i class="fas fa-chart-line text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+                    SalesTracker Pro
+                </h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" id="globalSearch" placeholder="Поиск записей..." 
+                           class="pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="theme-toggle sr-only peer" id="themeToggle">
+                    <div class="toggle-label w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 theme-transition"></div>
+                    <i class="sun-icon fas fa-sun absolute text-yellow-400 ml-1 mt-1"></i>
+                    <i class="moon-icon fas fa-moon absolute text-blue-300 ml-8 mt-1"></i>
+                </label>
+                <button id="exportBtn" class="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-file-export"></i>
+                    <span>Экспорт в CSV</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bg-gray-800 text-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8">
+                    <button data-tab="records" class="tab-btn py-4 px-1 border-b-2 border-primary font-medium text-lg">Записи</button>
+                    <button data-tab="analytics" class="tab-btn py-4 px-1 font-medium text-lg hover:text-gray-300">Аналитика</button>
+                    <button data-tab="reports" class="tab-btn py-4 px-1 font-medium text-lg hover:text-gray-300">Отчёты</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Records Tab -->
+            <div id="recordsTab" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="lg:col-span-2">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-bold text-gray-800 dark:text-white">Добавить новую запись</h2>
+                                <span class="text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full">
+                                    <i class="fas fa-info-circle mr-1"></i> Все поля обязательны
+                                </span>
+                            </div>
+                            <form id="addItemForm" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">Тип операции</label>
+                                        <select id="itemType" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                            <option value="income">Доход</option>
+                                            <option value="expense">Расход</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">Сумма (₽)</label>
+                                        <input type="number" id="itemAmount" step="0.01" min="0.01" required 
+                                               class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">Дата и время</label>
+                                        <input type="datetime-local" id="itemDate" required 
+                                               class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">Категория</label>
+                                        <input type="text" id="itemCategory" list="categories" required 
+                                               class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                        <datalist id="categories">
+                                            <option value="Зарплата">
+                                            <option value="Продажи">
+                                            <option value="Инвестиции">
+                                            <option value="Продукты">
+                                            <option value="Транспорт">
+                                            <option value="Развлечения">
+                                            <option value="Коммунальные услуги">
+                                            <option value="Образование">
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Описание</label>
+                                    <textarea id="itemDescription" rows="3" required 
+                                              class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition"></textarea>
+                                </div>
+                                <button type="submit" class="w-full btn-primary text-white font-medium py-3 px-6 rounded-lg hover:opacity-90 transition flex items-center justify-center">
+                                    <i class="fas fa-plus-circle mr-2"></i> Добавить запись
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                            <h2 class="text-xl font-bold mb-4 flex items-center">
+                                <i class="fas fa-filter text-primary mr-2"></i> Фильтры
+                            </h2>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Тип</label>
+                                    <select id="filterType" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 theme-transition">
+                                        <option value="">Все типы</option>
+                                        <option value="income">Доход</option>
+                                        <option value="expense">Расход</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Категория</label>
+                                    <select id="filterCategory" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 theme-transition">
+                                        <option value="">Все категории</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Период</label>
+                                    <select id="filterPeriod" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 theme-transition">
+                                        <option value="all">Весь период</option>
+                                        <option value="today">Сегодня</option>
+                                        <option value="week">Неделя</option>
+                                        <option value="month">Месяц</option>
+                                        <option value="quarter">Квартал</option>
+                                    </select>
+                                </div>
+                                <button id="applyFilters" class="w-full bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-lg transition">
+                                    Применить фильтры
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-6 text-white">
+                            <h3 class="text-lg font-bold mb-2 flex items-center">
+                                <i class="fas fa-lightbulb mr-2"></i> Совет дня
+                            </h3>
+                            <p class="opacity-90">Регулярно анализируйте расходы по категориям, чтобы выявить возможности для оптимизации бюджета.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden theme-transition">
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <h2 class="text-xl font-bold">Все записи</h2>
+                        <div class="flex space-x-2">
+                            <select id="itemsPerPage" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 theme-transition">
+                                <option value="10">10 записей</option>
+                                <option value="25" selected>25 записей</option>
+                                <option value="50">50 записей</option>
+                                <option value="100">100 записей</option>
+                            </select>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <i class="fas fa-sort text-gray-400"></i>
+                                </div>
+                                <select id="sortOrder" class="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 theme-transition">
+                                    <option value="date_desc">Дата: новое → старое</option>
+                                    <option value="date_asc">Дата: старое → новое</option>
+                                    <option value="amount_desc">Сумма: по убыванию</option>
+                                    <option value="amount_asc">Сумма: по возрастанию</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Тип</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Сумма</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Дата</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Категория</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Описание</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 theme-transition">
+                                <!-- Записи будут загружены через JS -->
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                        <i class="fas fa-sync-alt fa-spin text-3xl mb-3"></i>
+                                        <p class="text-lg">Загрузка записей...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <div class="text-sm text-gray-700 dark:text-gray-300">
+                            Показано <span id="currentPageStart">0</span>–<span id="currentPageEnd">0</span> из <span id="totalItems">0</span> записей
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="prevPage" disabled class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 theme-transition">
+                                <i class="fas fa-chevron-left mr-1"></i> Назад
+                            </button>
+                            <button id="nextPage" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 theme-transition">
+                                Вперёд <i class="fas fa-chevron-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analyticsTab" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                        <h2 class="text-xl font-bold mb-6 flex items-center">
+                            <i class="fas fa-calendar-range text-primary mr-2"></i> Выберите период анализа
+                        </h2>
+                        <form id="analyticsForm" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Начало периода</label>
+                                    <input type="datetime-local" id="analyticsFrom" required 
+                                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Конец периода</label>
+                                    <input type="datetime-local" id="analyticsTo" required 
+                                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                </div>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button type="submit" class="flex-1 btn-primary text-white font-medium py-3 px-6 rounded-lg hover:opacity-90 transition flex items-center justify-center">
+                                    <i class="fas fa-chart-bar mr-2"></i> Получить аналитику
+                                </button>
+                                <button type="button" id="presetToday" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium py-3 px-4 rounded-lg transition">
+                                    Сегодня
+                                </button>
+                                <button type="button" id="presetWeek" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium py-3 px-4 rounded-lg transition">
+                                    Неделя
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                        <h2 class="text-xl font-bold mb-6 flex items-center">
+                            <i class="fas fa-cogs text-secondary mr-2"></i> Дополнительные настройки
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Группировка данных</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" data-group="none" class="group-btn active bg-primary text-white py-2 px-4 rounded-lg">Без группировки</button>
+                                    <button type="button" data-group="day" class="group-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-4 rounded-lg">По дням</button>
+                                    <button type="button" data-group="week" class="group-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-4 rounded-lg">По неделям</button>
+                                    <button type="button" data-group="category" class="group-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-4 rounded-lg">По категориям</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <div class="relative">
+                                        <input type="checkbox" id="includeCharts" class="sr-only" checked>
+                                        <div class="block bg-gray-200 dark:bg-gray-700 w-14 h-8 rounded-full"></div>
+                                        <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition"></div>
+                                    </div>
+                                    <span class="text-sm font-medium">Показывать графики</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="analyticsResult" class="hidden">
+                    <div class="data-grid mb-8">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 text-center theme-transition card-hover">
+                            <div class="text-green-500 dark:text-green-400 text-4xl font-bold mb-2">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <h3 class="text-gray-500 dark:text-gray-400 mb-1">Общая сумма</h3>
+                            <p id="sumResult" class="text-3xl font-bold text-gray-800 dark:text-white">0.00 ₽</p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 text-center theme-transition card-hover">
+                            <div class="text-blue-500 dark:text-blue-400 text-4xl font-bold mb-2">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <h3 class="text-gray-500 dark:text-gray-400 mb-1">Среднее</h3>
+                            <p id="avgResult" class="text-3xl font-bold text-gray-800 dark:text-white">0.00 ₽</p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 text-center theme-transition card-hover">
+                            <div class="text-purple-500 dark:text-purple-400 text-4xl font-bold mb-2">
+                                <i class="fas fa-list"></i>
+                            </div>
+                            <h3 class="text-gray-500 dark:text-gray-400 mb-1">Количество</h3>
+                            <p id="countResult" class="text-3xl font-bold text-gray-800 dark:text-white">0</p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 text-center theme-transition card-hover">
+                            <div class="text-orange-500 dark:text-orange-400 text-4xl font-bold mb-2">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <h3 class="text-gray-500 dark:text-gray-400 mb-1">Медиана</h3>
+                            <p id="medianResult" class="text-3xl font-bold text-gray-800 dark:text-white">0.00 ₽</p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 text-center theme-transition card-hover">
+                            <div class="text-red-500 dark:text-red-400 text-4xl font-bold mb-2">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <h3 class="text-gray-500 dark:text-gray-400 mb-1">90-й перцентиль</h3>
+                            <p id="percent90Result" class="text-3xl font-bold text-gray-800 dark:text-white">0.00 ₽</p>
+                        </div>
+                    </div>
+                    
+                    <div id="analyticsCharts" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                            <h3 class="text-xl font-bold mb-4">Распределение по категориям</h3>
+                            <canvas id="categoryChart" height="250"></canvas>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                            <h3 class="text-xl font-bold mb-4">Динамика операций</h3>
+                            <canvas id="timelineChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Детализация операций</h3>
+                            <button id="exportAnalyticsCsv" class="flex items-center space-x-2 text-primary hover:text-secondary">
+                                <i class="fas fa-file-csv"></i>
+                                <span>Экспорт в CSV</span>
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Дата</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Тип</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Сумма</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Категория</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analyticsDetails" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 theme-transition">
+                                    <!-- Данные будут загружены через JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reportsTab" class="tab-content hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition card-hover">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-file-alt text-secondary mr-2"></i> Генератор отчётов
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Тип отчёта</label>
+                            <select id="reportType" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                <option value="summary">Сводный отчёт</option>
+                                <option value="category">По категориям</option>
+                                <option value="period">По периодам</option>
+                                <option value="custom">Пользовательский</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Формат экспорта</label>
+                            <select id="exportFormat" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                <option value="csv">CSV (таблица)</option>
+                                <option value="pdf">PDF (документ)</option>
+                                <option value="json">JSON (данные)</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Период отчёта</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="datetime-local" id="reportFrom" class="p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                <input type="datetime-local" id="reportTo" class="p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <button id="generateReport" class="w-full btn-success text-white font-medium py-3 px-6 rounded-lg hover:opacity-90 transition flex items-center justify-center">
+                                <i class="fas fa-file-download mr-2"></i> Сгенерировать отчёт
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 theme-transition">
+                    <h3 class="text-xl font-bold mb-4">История сгенерированных отчётов</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Дата</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Тип</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Период</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Формат</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsHistory" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 theme-transition">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                        <i class="fas fa-history text-3xl mb-3 opacity-50"></i>
+                                        <p class="text-lg">История отчётов пуста</p>
+                                        <p class="text-sm mt-2">Сгенерируйте первый отчёт, чтобы увидеть историю</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Edit Modal -->
+        <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 theme-transition">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto theme-transition">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Редактировать запись</h2>
+                    <button id="closeEditModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <form id="editItemForm" class="p-6">
+                    <input type="hidden" id="editItemId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Тип операции</label>
+                            <select id="editItemType" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                                <option value="income">Доход</option>
+                                <option value="expense">Расход</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Сумма (₽)</label>
+                            <input type="number" id="editItemAmount" step="0.01" min="0.01" required 
+                                   class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Дата и время</label>
+                            <input type="datetime-local" id="editItemDate" required 
+                                   class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Категория</label>
+                            <input type="text" id="editItemCategory" list="editCategories" required 
+                                   class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition">
+                            <datalist id="editCategories">
+                                <option value="Зарплата">
+                                <option value="Продажи">
+                                <option value="Инвестиции">
+                                <option value="Продукты">
+                                <option value="Транспорт">
+                                <option value="Развлечения">
+                                <option value="Коммунальные услуги">
+                                <option value="Образование">
+                            </datalist>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Описание</label>
+                            <textarea id="editItemDescription" rows="3" required 
+                                      class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent theme-transition"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <button type="button" id="deleteItemBtn" class="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-lg transition">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Удалить</span>
+                        </button>
+                        <button type="submit" class="flex items-center space-x-2 btn-primary text-white font-medium py-2 px-6 rounded-lg hover:opacity-90 transition">
+                            <i class="fas fa-save"></i>
+                            <span>Сохранить изменения</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-6 right-6 max-w-sm bg-white dark:bg-gray-800 border-l-4 border-green-500 text-gray-800 dark:text-gray-200 p-4 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 z-50 theme-transition">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mt-0.5">
+                    <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p id="toastMessage" class="text-sm font-medium">Операция выполнена успешно</p>
+                    <p id="toastDetails" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-6 px-6 theme-transition">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                    <div class="bg-gradient-to-r from-primary to-secondary text-white p-2 rounded-lg">
+                        <i class="fas fa-copyright"></i>
+                    </div>
+                    <span class="text-sm">2026 SalesTracker Pro. Все права защищены.</span>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-sm text-primary hover:text-secondary transition">Документация</a>
+                    <a href="#" class="text-sm text-primary hover:text-secondary transition">Поддержка</a>
+                    <a href="#" class="text-sm text-primary hover:text-secondary transition">GitHub</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js?v=2.1.0"></script>
+    <script>
+        // Инициализация темной темы из localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('themeToggle');
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggle.checked = true;
+            }
+            
+            themeToggle.addEventListener('change', () => {
+                if (themeToggle.checked) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+            
+            // Установка текущей даты в полях по умолчанию
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            
+            document.getElementById('itemDate').valueAsNumber = now.getTime() - now.getTimezoneOffset() * 60000;
+            document.getElementById('analyticsFrom').valueAsNumber = todayStart.getTime() - todayStart.getTimezoneOffset() * 60000;
+            document.getElementById('analyticsTo').valueAsNumber = todayEnd.getTime() - todayEnd.getTimezoneOffset() * 60000;
+            document.getElementById('reportFrom').valueAsNumber = todayStart.getTime() - todayStart.getTimezoneOffset() * 60000;
+            document.getElementById('reportTo').valueAsNumber = todayEnd.getTime() - todayEnd.getTimezoneOffset() * 60000;
+            
+            // Пресеты для аналитики
+            document.getElementById('presetToday').addEventListener('click', () => {
+                document.getElementById('analyticsFrom').valueAsNumber = todayStart.getTime() - todayStart.getTimezoneOffset() * 60000;
+                document.getElementById('analyticsTo').valueAsNumber = todayEnd.getTime() - todayEnd.getTimezoneOffset() * 60000;
+            });
+            
+            document.getElementById('presetWeek').addEventListener('click', () => {
+                const weekStart = new Date(todayStart);
+                weekStart.setDate(weekStart.getDate() - 7);
+                document.getElementById('analyticsFrom').valueAsNumber = weekStart.getTime() - weekStart.getTimezoneOffset() * 60000;
+                document.getElementById('analyticsTo').valueAsNumber = todayEnd.getTime() - todayEnd.getTimezoneOffset() * 60000;
+            });
+            
+            // Группировка кнопки
+            document.querySelectorAll('.group-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active', 'bg-primary', 'text-white'));
+                    btn.classList.add('active', 'bg-primary', 'text-white');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
