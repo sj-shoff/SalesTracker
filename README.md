@@ -97,21 +97,21 @@ http://localhost:8036
 
 ### Items
 
-GET /items — получение списка записей с пагинацией
-POST /items — создание новой записи
-GET /items/{id} — получение записи по идентификатору
-PUT /items/{id} — обновление записи
-DELETE /items/{id} — удаление записи
-GET /items/export — экспорт данных в CSV
+- GET /items — получение списка записей с пагинацией
+- POST /items — создание новой записи
+- GET /items/{id} — получение записи по идентификатору
+-PUT /items/{id} — обновление записи
+- DELETE /items/{id} — удаление записи
+- GET /items/export — экспорт данных в CSV
 
 ### Analytics
 
-GET /analytics — получение аналитики за период
+- GET /analytics — получение аналитики за период
 
 Параметры запроса аналитики:
 
-from — начало периода в формате RFC3339 (обязательный)
-to — конец периода в формате RFC3339 (обязательный)
+- from — начало периода в формате RFC3339 (обязательный)
+- to — конец периода в формате RFC3339 (обязательный)
 
 ### Формат запроса создания записи
 
@@ -151,20 +151,20 @@ to — конец периода в формате RFC3339 (обязательн
 
 ### Таблица items
 
-id — SERIAL PRIMARY KEY, уникальный идентификатор
-type — VARCHAR(50), тип операции (income или expense)
-amount — DECIMAL(10,2), сумма операции
-date — TIMESTAMPTZ, дата и время операции
-category — VARCHAR(100), категория операции
-description — TEXT, описание операции
-created_at — TIMESTAMPTZ, дата создания записи
-updated_at — TIMESTAMPTZ, дата обновления записи
+- id — SERIAL PRIMARY KEY, уникальный идентификатор
+- type — VARCHAR(50), тип операции (income или expense)
+- amount — DECIMAL(10,2), сумма операции
+- date — TIMESTAMPTZ, дата и время операции
+- category — VARCHAR(100), категория операции
+- description — TEXT, описание операции
+- created_at — TIMESTAMPTZ, дата создания записи
+- updated_at — TIMESTAMPTZ, дата обновления записи
 
 ### Индексы
 
-idx_items_date — индекс по полю date
-idx_items_amount — индекс по полю amount
-idx_items_category — индекс по полю category
+- idx_items_date — индекс по полю date
+-idx_items_amount — индекс по полю amount
+- idx_items_category — индекс по полю category
 
 ## Формат CSV-отчёта
 
