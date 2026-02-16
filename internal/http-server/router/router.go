@@ -26,14 +26,13 @@ func NewRouter(itemsH *itemsH.ItemsHandler, analyticsH *analyticsH.AnalyticsHand
 			}
 		})
 	})
-
 	workDir, _ := os.Getwd()
 	staticDir := http.Dir(filepath.Join(workDir, "static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(staticDir)))
-
 	r.Route("/items", func(r chi.Router) {
 		r.Get("/", itemsH.GetItems)
 		r.Post("/", itemsH.CreateItem)
+		r.Get("/export", itemsH.ExportCSV)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", itemsH.GetItemByID)
 			r.Put("/", itemsH.UpdateItem)
@@ -41,7 +40,6 @@ func NewRouter(itemsH *itemsH.ItemsHandler, analyticsH *analyticsH.AnalyticsHand
 		})
 	})
 	r.Get("/analytics", analyticsH.GetAnalytics)
-
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		serveHTML(w, r, workDir)
 	})
@@ -54,7 +52,6 @@ func NewRouter(itemsH *itemsH.ItemsHandler, analyticsH *analyticsH.AnalyticsHand
 			http.NotFound(w, r)
 		}
 	})
-
 	logger.Info().Msg("Routes registered")
 	return r
 }

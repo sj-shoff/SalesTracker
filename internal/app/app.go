@@ -41,11 +41,11 @@ func NewApp(cfg *config.Config, logger *zlog.Zerolog) (*App, error) {
 	itemsRepo := items_postgres.NewPostgresRepository(db, retries)
 	analyticsRepo := analytics_postgres.NewAnalyticsPostgresRepository(db, retries)
 
-	itemsService := items_usecase.NewService(itemsRepo, logger)
-	analyticsService := analytics_usecase.NewService(analyticsRepo, logger)
+	itemsUsecase := items_usecase.NewService(itemsRepo, logger)
+	analyticsUsecase := analytics_usecase.NewService(analyticsRepo, logger)
 
-	itemsHandler := items_handler.NewHandler(itemsService, logger)
-	analyticsHandler := analytics_handler.NewHandler(analyticsService, logger)
+	itemsHandler := items_handler.NewHandler(itemsUsecase, analyticsUsecase, logger)
+	analyticsHandler := analytics_handler.NewHandler(analyticsUsecase, logger)
 
 	mux := router.NewRouter(itemsHandler, analyticsHandler, logger)
 

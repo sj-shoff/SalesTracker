@@ -11,7 +11,6 @@ build:
 
 docker-up:
 	docker-compose up -d --build
-	make kafka-init
 
 docker-down:
 	docker-compose down
