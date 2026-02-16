@@ -2,6 +2,7 @@ package analytics_postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sales-tracker/internal/domain"
 	customErr "sales-tracker/internal/domain/errors"
@@ -29,6 +30,15 @@ func (r *AnalyticsPostgresRepository) GetAnalytics(ctx context.Context, from, to
 		Expense: &domain.ItemAnalytics{},
 	}
 
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
+	}
+	defer tx.Rollback()
+
 	incomeQuery := `
     SELECT
         COALESCE(SUM(amount), 0) AS sum,
@@ -40,11 +50,7 @@ func (r *AnalyticsPostgresRepository) GetAnalytics(ctx context.Context, from, to
     WHERE date BETWEEN $1 AND $2 AND type = 'income'
     `
 
-	row, err := r.db.QueryRowWithRetry(ctx, r.retries, incomeQuery, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
-	}
-
+	row := tx.QueryRowContext(ctx, incomeQuery, from, to)
 	err = row.Scan(
 		&analytics.Income.Sum,
 		&analytics.Income.Avg,
@@ -67,11 +73,7 @@ func (r *AnalyticsPostgresRepository) GetAnalytics(ctx context.Context, from, to
     WHERE date BETWEEN $1 AND $2 AND type = 'expense'
     `
 
-	row, err = r.db.QueryRowWithRetry(ctx, r.retries, expenseQuery, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
-	}
-
+	row = tx.QueryRowContext(ctx, expenseQuery, from, to)
 	err = row.Scan(
 		&analytics.Expense.Sum,
 		&analytics.Expense.Avg,
@@ -90,7 +92,7 @@ func (r *AnalyticsPostgresRepository) GetAnalytics(ctx context.Context, from, to
     ORDER BY date DESC
     `
 
-	rows, err := r.db.QueryWithRetry(ctx, r.retries, detailsQuery, from, to)
+	rows, err := tx.QueryContext(ctx, detailsQuery, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
 	}
@@ -115,6 +117,10 @@ func (r *AnalyticsPostgresRepository) GetAnalytics(ctx context.Context, from, to
 	}
 
 	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("%w: %v", customErr.ErrDatabase, err)
 	}
 
